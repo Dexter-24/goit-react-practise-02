@@ -1,5 +1,5 @@
 import { getPhotos } from 'apiService/photos';
-import { Form, Text } from 'components';
+import { Button, Form, Loader, PhotosGallery, Text } from 'components';
 import { useEffect, useState } from 'react';
 
 export const Photos = () => {
@@ -8,7 +8,8 @@ export const Photos = () => {
   const [images, setImages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  
+  const [isEmpty, setIsEmpty] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
 
 
   useEffect(() => {
@@ -20,8 +21,13 @@ export const Photos = () => {
       setIsLoading(true);
       
       try {
-        const data = await getPhotos(query, page);
-        console.log(data);
+        const { photos, per_page, total_results} = await getPhotos(query, page);
+        if (!photos.length) {
+          return setIsEmpty(true);
+        }
+        setImages(prevImages => [...prevImages, ...photos])
+        setIsVisible(page < Math.ceil(total_results / per_page))
+      
       } catch (error) {
         setError(error);
       }
@@ -36,12 +42,27 @@ export const Photos = () => {
 
   const onHandleSubmit = (value) => {
     setQuery(value);
+    setImages([]);
+    setPage(1);
+    setError(null);
+    setIsEmpty(false);
+    setIsVisible(false);
+  }
+
+  const onLoadMore = () => {
+    setPage(prevPage => prevPage + 1);
   }
 
   return (
     <>
-      <Form onSubmit={onHandleSubmit}/>
-      <Text textAlign="center">Let`s begin search 🔎</Text>
+      <Form onSubmit={onHandleSubmit} />
+      {images.length > 0 && <PhotosGallery images={images} />}
+      {isVisible && <Button onClick={onLoadMore} disabled={isLoading}>{ isLoading ? "loading" : "LoadMore"}</Button>}
+      {!images.length && !isEmpty && <Text textAlign="center">Let`s begin search 🔎</Text>}
+      {isLoading && <Loader />}
+      {error && <Text textAlign="center">❌ Something went wrong - {error}</Text>}
+      {isEmpty && <Text textAlign="center">Sorry. There are no images ... 😭</Text>}
+
     </>
   );
 };
